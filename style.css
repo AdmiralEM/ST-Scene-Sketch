@@ -1,0 +1,8 @@
+.ss-panel { padding:12px; display:flex; flex-direction:column; gap:10px; }
+.ss-panel svg { width:100%; max-height:65vh; border-radius:8px; touch-action:none; }
+.ss-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.ss-panel textarea { width:100%; min-height:160px; font:13px monospace; }
+.ss-panel dialog { color:inherit; }
+#ss-dialog { width:min(960px,94vw); max-height:92vh; overflow:auto; background:var(--SmartThemeBlurTintColor,#202530); color:var(--SmartThemeBodyColor,#eee); border:1px solid #64748b; border-radius:12px; }
+#ss-dialog::backdrop { background:#0009; }
+.ss-status { white-space:pre-wrap; }
