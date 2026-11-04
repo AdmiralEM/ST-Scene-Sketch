@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scene Sketch — local mock fixture</title>
+<link rel="stylesheet" href="style.css">
+<style>body{background:#202530;color:#eee;font:16px system-ui;max-width:960px;margin:30px auto;padding:12px}button,input,select,textarea{font:inherit}button{margin:4px;padding:8px}textarea{box-sizing:border-box}#fixture-controls{position:fixed;bottom:0;left:0;background:#202530;padding:8px;z-index:2147483647;border:1px solid #64748b}</style>
+<h1>Scene Sketch mock fixture</h1>
+<p>This isolated page replaces SillyTavern APIs with an in-memory mock. It makes no model requests and does not write chat files. Generate waits until you choose a response below. Reload clears mock metadata.</p>
+<div id="extensions_settings2"></div>
+<h2>Mock chat-input wand menu</h2>
+<button id="fixture-wand-button">Open mock wand menu</button>
+<div id="extensionsMenu"></div>
+<p id="fixture-status" role="status">No requests.</p>
+<div id="fixture-controls">
+<label>Response fixture <select id="fixture-scene"></select></label>
+<button id="resolve">Return valid scene</button><button id="invalid">Return invalid JSON</button><button id="fail">Reject request</button><button id="edit">Edit message</button><button id="swipe">Swipe message</button><button id="switch">Switch chat</button>
+</div>
+<script type="module">
+import { fixtures } from './fixtures.js';
+import { spatialFixtures } from './spatial-fixtures.js';
+import { regressionScenes } from './regression-cases.js';
+import { articulatedFixtures } from './articulated-fixtures.js';
+const responses={...fixtures,...spatialFixtures,...regressionScenes,...articulatedFixtures};
+const fixtureSelect=document.querySelector('#fixture-scene');
+for(const [key,scene] of Object.entries(responses)){const option=document.createElement('option');option.value=key;option.textContent=`${key}: ${scene.title}`;fixtureSelect.append(option);}
+fixtureSelect.value='v3_custom';
+const listeners=new Map();
+const menu=document.querySelector('#extensionsMenu');
+document.querySelector('#fixture-wand-button').onclick=()=>{menu.hidden=false;};
+// Emulate core's delegated drawer behavior on this isolated page only.
+document.addEventListener('click',event=>{
+    if(event.target===document.documentElement)menu.hidden=true;
+    const toggle=event.target.closest('.inline-drawer-toggle');
+    if(toggle){const content=toggle.parentElement.querySelector('.inline-drawer-content');content.hidden=!content.hidden;}
+});
+const status=document.querySelector('#fixture-status');
+let pending,requests=0,saves=0;
+const context={characterId:0,groupId:null,chatId:'fixture-a',chat:[{name:'Alex',mes:'Alex sits beside the table.',swipe_id:0}],chatMetadata:{},extensionSettings:{},
+    eventTypes:Object.fromEntries(['APP_READY','CHAT_CHANGED','MESSAGE_EDITED','MESSAGE_SWIPED'].map(x=>[x,x])),
+    eventSource:{on(event,fn){listeners.set(event,fn);}},saveSettingsDebounced(){},
+    async saveMetadata(){status.textContent=`Mock metadata writes: ${++saves}. Requests: ${requests}.`;},
+    generateRaw(options){
+        const dialog=document.querySelector('#ss-dialog'), controls=document.querySelector('#fixture-controls');
+        dialog.append(controls); // Native modal dialogs make controls outside them inert.
+        dialog.addEventListener('close',()=>document.body.append(controls),{once:true});
+        status.textContent=`Mock request ${++requests}; limit ${options.responseLength}. Choose a response below.`;
+        return new Promise((resolve,reject)=>{pending={resolve,reject};});}};
+window.SillyTavern={getContext:()=>context};
+const finish=(value,error)=>{if(!pending)return;const p=pending;pending=null;error?p.reject(Error(value)):p.resolve(value);};
+document.querySelector('#resolve').onclick=()=>finish(JSON.stringify(responses[fixtureSelect.value]));
+document.querySelector('#invalid').onclick=()=>finish('{broken');
+document.querySelector('#fail').onclick=()=>finish('Mock provider failure',true);
+document.querySelector('#edit').onclick=()=>{context.chat[0].mes+=' Edited.';listeners.get('MESSAGE_EDITED')?.();};
+document.querySelector('#swipe').onclick=()=>{context.chat[0].swipe_id++;listeners.get('MESSAGE_SWIPED')?.();};
+document.querySelector('#switch').onclick=()=>{context.chatId=context.chatId==='fixture-a'?'fixture-b':'fixture-a';context.chatMetadata={};listeners.get('CHAT_CHANGED')?.();status.textContent=`Switched to ${context.chatId}.`;};
+await import('./index.js');
+document.querySelector('.inline-drawer-content').hidden=true;
+</script>
+</html>
